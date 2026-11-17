@@ -263,6 +263,7 @@ class _GamePageState extends State<GamePage> {
   int _dealtCount = 0; // 已发张数
   Timer? _dealTimer;
   int? _lastDrawnTile;
+  int? _pendingDiscard; // 待出牌（点选标记，确认后打出）
   final List<Map<String, dynamic>> _floaters = [];
   final GlobalKey _resultKey = GlobalKey(); // 战报截图 // 碰杠飘字
   int _floaterSeq = 0;
@@ -829,12 +830,27 @@ class _GamePageState extends State<GamePage> {
       return;
     }
     if (!table.waitingForHuman() || table.phase != 'discard') return;
+    // 待出牌机制：点牌 = 标记（再点取消），确认后才真正打出
+    if (_pendingDiscard == tile) {
+      setState(() => _pendingDiscard = null);
+      return;
+    }
+    setState(() => _pendingDiscard = tile);
+  }
+
+  /// 确认打出待出牌
+  void _confirmPendingDiscard() {
+    final tile = _pendingDiscard;
+    if (tile == null) return;
     if (!table.canDiscard(mySeat, tile)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('还没打缺，必须先打缺门的牌！'), duration: Duration(seconds: 1)),
+        const SnackBar(
+            content: Text('还没打缺，必须先打缺门的牌！'),
+            duration: Duration(seconds: 1)),
       );
       return;
     }
+    setState(() => _pendingDiscard = null);
     table.discard(mySeat, tile);
     SoundManager.discard();
     _lastDrawnTile = null;
@@ -2008,20 +2024,37 @@ class _GamePageState extends State<GamePage> {
         for (final t in me.canGangTiles)
           _actionBtn('杠 ${tileName(t)}', const Color(0xFFE65100), () => _gang(t)),
         const SizedBox(width: 8),
-        if (ting.isNotEmpty)
+        if (_pendingDiscard != null) ...[
+          // 待出牌确认
           Text(
-            '听: ${ting.map((t) => tileName(t)).join(' ')}',
+            '待出: ${tileName(_pendingDiscard!)}',
             style: const TextStyle(
                 color: Color(0xFF90CAF9),
                 fontWeight: FontWeight.bold,
                 fontSize: 13),
           ),
-        const SizedBox(width: 8),
-        const Text('轮到你了 · 点手牌打出',
-            style: TextStyle(
-                color: Color(0xFFFFD54F),
-                fontWeight: FontWeight.bold,
-                shadows: [Shadow(color: Colors.black54, offset: Offset(0, 1))])),
+          _actionBtn('打出 ✓', const Color(0xFF2E7D32), _confirmPendingDiscard),
+          _actionBtn('取消', Colors.blueGrey, () {
+            setState(() => _pendingDiscard = null);
+          }),
+        ] else ...[
+          const Text('轮到你了 · 点手牌标记待出',
+              style: TextStyle(
+                  color: Color(0xFFFFD54F),
+                  fontWeight: FontWeight.bold,
+                  shadows: [Shadow(color: Colors.black54, offset: Offset(0, 1))])),
+          if (ting.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                '听: ${ting.map((t) => tileName(t)).join(' ')}',
+                style: const TextStyle(
+                    color: Color(0xFF90CAF9),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -2084,86 +2117,126 @@ class _GamePageState extends State<GamePage> {
         ),
         border: Border(top: BorderSide(color: Color(0xFF8D6E63), width: 2)),
       ),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
       child: Column(
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 for (final t in shown)
                   GestureDetector(
                     onTap: () => _tapHandTile(t),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Stack(
-                        clipBehavior: Clip.none,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            decoration: _isDingqueTile(t, me)
-                                ? BoxDecoration(
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: const Color(0xFFE53935),
-                                      width: 2,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                decoration: _isDingqueTile(t, me)
+                                    ? BoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFFE53935),
+                                          width: 2,
+                                        ),
+                                      )
+                                    : null,
+                                padding: _isDingqueTile(t, me)
+                                    ? const EdgeInsets.all(2)
+                                    : EdgeInsets.zero,
+                                child: MahjongTileWidget(
+                                  tile: t,
+                                  width: 44,
+                                  height: 60,
+                                  raised: true,
+                                  glow: _exchangeSel.contains(t) ||
+                                      t == _pendingDiscard ||
+                                      t == _lastDrawnTile,
+                                  glowColor: t == _pendingDiscard
+                                      ? const Color(0xFF1976D2)
+                                      : t == _lastDrawnTile &&
+                                              !_exchangeSel.contains(t)
+                                          ? const Color(0xFF90CAF9)
+                                          : const Color(0xFFFFD54F),
+                                ),
+                              ),
+                              // 待出牌角标
+                              if (t == _pendingDiscard)
+                                Positioned(
+                                  top: -5,
+                                  left: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF1976D2),
+                                      shape: BoxShape.circle,
                                     ),
-                                  )
-                                : null,
-                            padding: _isDingqueTile(t, me)
-                                ? const EdgeInsets.all(2)
-                                : EdgeInsets.zero,
-                            child: MahjongTileWidget(
-                              tile: t,
-                              width: 44,
-                              height: 60,
-                              raised: true,
-                              glow: _exchangeSel.contains(t) || t == _lastDrawnTile,
-                              glowColor: t == _lastDrawnTile && !_exchangeSel.contains(t)
-                                  ? const Color(0xFF90CAF9)
-                                  : const Color(0xFFFFD54F),
-                            ),
+                                    child: const Text(
+                                      '出',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // 换三张选中数量（同值多张）
+                              if (_exchangeSel.where((x) => x == t).length > 1)
+                                Positioned(
+                                  top: -5,
+                                  left: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF1976D2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '×' + _exchangeSel.where((x) => x == t).length.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (_isDingqueTile(t, me))
+                                Positioned(
+                                  top: -5,
+                                  right: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFE53935),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text(
+                                      '缺',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          // 换三张选中数量（同值多张）
-                          if (_exchangeSel.where((x) => x == t).length > 1)
-                            Positioned(
-                              top: -5,
-                              left: -5,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF1976D2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '×' + _exchangeSel.where((x) => x == t).length.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (_isDingqueTile(t, me))
-                            Positioned(
-                              top: -5,
-                              right: -5,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE53935),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Text(
-                                  '缺',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          const SizedBox(height: 2),
+                          // 牌名（看清是什么牌）
+                          Text(
+                            tileName(t),
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 9),
+                          ),
                         ],
                       ),
                     ),
@@ -2171,7 +2244,7 @@ class _GamePageState extends State<GamePage> {
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           if (me.melds.isNotEmpty)
             Wrap(
               spacing: 4,
