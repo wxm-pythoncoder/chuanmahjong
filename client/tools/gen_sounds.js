@@ -66,7 +66,30 @@ const sounds = {
       return Math.sin(t * 2 * Math.PI * freq) * Math.exp(-((p * 3) % 1) * 3) * 0.8;
     },
   }),
-  // 大胡（封顶）：庆祝琶音
+  // 骰子：五连快点击
+  dice: synth({
+    duration: 0.5,
+    gen: (t, p) => {
+      const seg = (p * 5) % 1;
+      return seg < 0.15
+          ? Math.sin(t * 2 * Math.PI * 1400) * Math.exp(-seg * 30) * 0.6
+          : 0;
+    },
+  }),
+  // 过自摸：轻柔下滑音
+  pass: synth({
+    duration: 0.2,
+    gen: (t, p) => Math.sin(t * 2 * Math.PI * (700 - p * 300)) * Math.exp(-p * 5) * 0.6,
+  }),
+  // 查叫：低沉双音
+  qiao: synth({
+    duration: 0.3,
+    gen: (t, p) =>
+      (Math.sin(t * 2 * Math.PI * 500) + Math.sin(t * 2 * Math.PI * 750) * 0.5) *
+          Math.exp(-p * 4) *
+          0.7,
+  }),
+    // 大胡（封顶）：庆祝琶音
   win: synth({
     duration: 0.8,
     gen: (t, p) => {

@@ -342,7 +342,9 @@ class _GamePageState extends State<GamePage> {
         if (r == 'waiting') break;
         if (mounted) setState(() {});
         _announceHu();
-        await Future.delayed(botThinkDelay());
+        // 出牌/胡牌用真人节奏；换牌、定缺等准备动作用快节奏
+        await Future.delayed(
+            table.state == statePlaying ? botThinkDelay() : const Duration(milliseconds: 350));
       }
     } finally {
       _advancing = false;
@@ -378,7 +380,7 @@ class _GamePageState extends State<GamePage> {
       _dealtCount = 0;
     });
     _dealTimer?.cancel();
-    _dealTimer = Timer.periodic(const Duration(milliseconds: 90), (timer) {
+    _dealTimer = Timer.periodic(const Duration(milliseconds: 45), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -463,7 +465,7 @@ class _GamePageState extends State<GamePage> {
         });
       }
       if (e.type == 'huazhu' || e.type == 'chadajiao') {
-        // 查叫音效在结算弹窗展示，此处跳过
+        SoundManager.qiao();
       }
       if (e.type == 'chadajiao') {
         final p = table.players[e.data['seat'] as int];
@@ -870,6 +872,7 @@ class _GamePageState extends State<GamePage> {
   /// 过自摸：放弃本次自摸，继续出牌把牌做大
   void _passSelfDraw() {
     table.passSelfDraw(mySeat);
+    SoundManager.pass();
     setState(() {
       huBanner = {
         'kind': 'gang',
@@ -903,7 +906,41 @@ class _GamePageState extends State<GamePage> {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Text('血战到底 · 余牌 ${table.wall.length}'),
+        title: Row(
+          children: [
+            Text('血战到底 · 余牌 ${table.wall.length}'),
+            const SizedBox(width: 12),
+            // 缺门醒目提示：缺什么、还剩几张
+            Builder(builder: (context) {
+              final q = table.players[mySeat].dingque;
+              if (q == null) {
+                return const Text('待定缺',
+                    style: TextStyle(color: Colors.white38, fontSize: 13));
+              }
+              final left = table
+                  .players[mySeat].hand
+                  .where((t) => tileSuit(t) == q)
+                  .length;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: left > 0
+                      ? const Color(0xFFC62828)
+                      : const Color(0xFF2E7D32),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  left > 0 ? '缺${suitNames[q]} · 还剩 $left 张' : '已打缺 ✓',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold),
+                ),
+              );
+            }),
+          ],
+        ),
         actions: [
           // 记牌器开关
           IconButton(
@@ -1541,13 +1578,38 @@ class _GamePageState extends State<GamePage> {
   /// 副露展示：碰/杠亮在各家面前（暗杠只亮一张），新增时脉冲动画
   Widget _meldDisplay(PlayerState p, {bool vertical = false}) {
     if (p.melds.isEmpty) return const SizedBox.shrink();
+    // 每组副露独立滑入动画（新增的副露从右侧滑入）
+    Widget meldSlide(int index, Widget group) {
+      return TweenAnimationBuilder<double>(
+        key: ValueKey('meld-slide-undefined-$index'),
+        tween: Tween(begin: 36.0, end: 0.0),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        builder: (context, dx, child) =>
+            Transform.translate(offset: Offset(dx, 0), child: child),
+        child: group,
+      );
+    }
+
     final melds = vertical
         ? Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final m in p.melds) Padding(padding: const EdgeInsets.only(bottom: 3), child: _meldGroup(m))],
+            children: [
+              for (var i = 0; i < p.melds.length; i++)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: meldSlide(i, _meldGroup(p.melds[i]))),
+            ],
           )
-        : Wrap(spacing: 6, runSpacing: 4, children: [for (final m in p.melds) _meldGroup(m)]);
+        : Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (var i = 0; i < p.melds.length; i++)
+                meldSlide(i, _meldGroup(p.melds[i])),
+            ],
+          );
     return TweenAnimationBuilder<double>(
       key: ValueKey('meld-${p.seat}-${p.melds.length}'),
       tween: Tween(begin: 1.25, end: 1.0),
@@ -1774,13 +1836,30 @@ class _GamePageState extends State<GamePage> {
         runSpacing: 3,
         children: [
           for (var i = 0; i < discards.length; i++)
-            MahjongTileWidget(
-              tile: discards[i],
-              width: 24,
-              height: 32,
-              glow: isLastRiver && i == discards.length - 1,
-              glowColor: const Color(0xFFFFD54F),
-            ),
+            // 最新打出的牌：弹入动画
+            if (isLastRiver && i == discards.length - 1)
+              TweenAnimationBuilder<double>(
+                key: ValueKey('river-$seat-${discards.length}'),
+                tween: Tween(begin: 1.5, end: 1.0),
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutBack,
+                builder: (context, scale, child) => Transform.scale(
+                  scale: scale,
+                  child: MahjongTileWidget(
+                    tile: discards[i],
+                    width: 24,
+                    height: 32,
+                    glow: true,
+                    glowColor: const Color(0xFFFFD54F),
+                  ),
+                ),
+              )
+            else
+              MahjongTileWidget(
+                tile: discards[i],
+                width: 24,
+                height: 32,
+              ),
         ],
       ),
     );

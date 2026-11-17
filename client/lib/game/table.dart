@@ -561,6 +561,62 @@ class Table {
   }
 
   /// 流局结算（查大叫）
+  /// 查叫听牌判定：支持 13 张与 14 张（最后摸牌者）手牌
+  /// 返回 [是否听牌, 最大自摸分]
+  List<dynamic> _tingHandCheck(PlayerState p) {
+    final cc = countsOf(p.seat);
+    final total = cc.fold<int>(0, (a, b) => a + b);
+    if (total == 14) {
+      // 最后摸牌者：胡形 即听；或弃任意一张后仍听
+      if (isWin(cc, p.melds.length)) {
+        var best = 0;
+        for (var t = 0; t < 27; t++) {
+          if (cc[t] == 0) continue;
+          final r = scoreHand(cc, p.melds, t,
+              {'winType': 'zimo', 'isFirstRound': false});
+          if (r.base > best) best = r.base;
+        }
+        return [true, best];
+      }
+      for (var d = 0; d < 27; d++) {
+        if (cc[d] == 0) continue;
+        cc[d]--;
+        final ting = tingTiles(cc, p.melds.length, p.dingque);
+        cc[d]++;
+        if (ting.isNotEmpty) {
+          // 最大自摸分：枚举 弃 d 进 p 的组合
+          var best = 0;
+          for (var t = 0; t < 27; t++) {
+            if (cc[t] == 0) continue;
+            cc[d]--;
+            cc[t]++;
+            if (isWin(cc, p.melds.length)) {
+              final r = scoreHand(cc, p.melds, t,
+                  {'winType': 'zimo', 'isFirstRound': false});
+              if (r.base > best) best = r.base;
+            }
+            cc[t]--;
+            cc[d]++;
+          }
+          return [true, best];
+        }
+      }
+      return [false, 0];
+    }
+    // 13 张：标准听牌
+    final ting = tingTiles(cc, p.melds.length, p.dingque);
+    if (ting.isEmpty) return [false, 0];
+    var best = 0;
+    for (final tile in ting) {
+      final cc2 = [...cc];
+      cc2[tile]++;
+      final r = scoreHand(cc2, p.melds, tile,
+          {'winType': 'zimo', 'isFirstRound': false});
+      if (r.base > best) best = r.base;
+    }
+    return [true, best];
+  }
+
   void settleDraw() {
     state = stateOver;
     // 查大叫 + 查花猪：花猪（未听且三门俱全）大赔
@@ -569,23 +625,12 @@ class Table {
     final huazhus = <PlayerState>[];
     for (final p in activePlayers()) {
       final suits = p.hand.map((t) => tileSuit(t)).toSet();
-      final cc = countsOf(p.seat);
-      final tingList = suits.length < 3
-          ? tingTiles(cc, p.melds.length, p.dingque)
-          : <int>[];
       p.isHuaZhu = suits.length == 3;
-      p.isTing = !p.isHuaZhu && tingList.isNotEmpty;
+      // 听牌判定（支持 13/14 张，按自摸最大方式计赔）
+      final check = _tingHandCheck(p);
+      p.isTing = !p.isHuaZhu && (check[0] as bool);
       if (p.isTing) {
-        // 以最大的方式算牌：按最大可胡番的自摸分计赔
-        var best = 0;
-        for (final tile in tingList) {
-          final cc2 = [...cc];
-          cc2[tile]++;
-          final r = scoreHand(cc2, p.melds, tile,
-              {'winType': 'zimo', 'isFirstRound': false});
-          if (r.base > best) best = r.base;
-        }
-        p.bestTingScore = best;
+        p.bestTingScore = check[1] as int;
         tings.add(p);
       } else if (p.isHuaZhu) {
         huazhus.add(p);

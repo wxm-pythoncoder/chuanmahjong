@@ -498,7 +498,66 @@ export class Table {
   }
 
   /** 流局结算（含查大叫） */
-  settleDraw() {
+  /** 查叫听牌判定：支持 13 张与 14 张（最后摸牌者）手牌，按自摸最大计 */
+  tingHandCheck(seat) {
+    const p = this.players[seat];
+    const cc = this.countsOf(seat);
+    const total = cc.reduce((a, b) => a + b, 0);
+    if (total === 14) {
+      if (isWin(cc, p.melds.length)) {
+        let best = 0;
+        for (let t = 0; t < 27; t++) {
+          if (cc[t] === 0) continue;
+          const r = scoreHand(cc, p.melds, t, {
+            winType: 'zimo',
+            isFirstRound: false,
+          });
+          if (r.base > best) best = r.base;
+        }
+        return [true, best];
+      }
+      for (let d = 0; d < 27; d++) {
+        if (cc[d] === 0) continue;
+        cc[d]--;
+        const ting = tingTiles(cc, p.melds.length, p.dingque);
+        cc[d]++;
+        if (ting.length > 0) {
+          let best = 0;
+          for (let t = 0; t < 27; t++) {
+            if (cc[t] === 0) continue;
+            cc[d]--;
+            cc[t]++;
+            if (isWin(cc, p.melds.length)) {
+              const r = scoreHand(cc, p.melds, t, {
+                winType: 'zimo',
+                isFirstRound: false,
+              });
+              if (r.base > best) best = r.base;
+            }
+            cc[t]--;
+            cc[d]++;
+          }
+          return [true, best];
+        }
+      }
+      return [false, 0];
+    }
+    const ting = tingTiles(cc, p.melds.length, p.dingque);
+    if (ting.length === 0) return [false, 0];
+    let best = 0;
+    for (const tile of ting) {
+      const cc2 = [...cc];
+      cc2[tile]++;
+      const r = scoreHand(cc2, p.melds, tile, {
+        winType: 'zimo',
+        isFirstRound: false,
+      });
+      if (r.base > best) best = r.base;
+    }
+    return [true, best];
+  }
+
+    settleDraw() {
     this.state = OVER;
     // 查大叫 + 查花猪：未听牌者向每个已听牌者赔其「最大听牌型自摸分」
     // 花猪（未听且手里三门俱全）大赔：赔给其他每个未胡玩家 16 分
@@ -507,23 +566,11 @@ export class Table {
     const huazhus = [];
     for (const p of this.activePlayers()) {
       const suits = new Set(p.hand.map((t) => tileSuit(t)));
-      const cc = this.countsOf(p.seat);
-      const ting = suits.size < 3 && tingTiles(cc, p.melds.length, p.dingque);
       p.isHuaZhu = suits.size === 3;
-      p.isTing = !p.isHuaZhu && ting.length > 0;
+      const check = p.isHuaZhu ? [false, 0] : this.tingHandCheck(p.seat);
+      p.isTing = check[0];
       if (p.isTing) {
-        // 以最大的方式算牌：听牌者按最大可胡番的自摸分计赔
-        let best = 0;
-        for (const tile of ting) {
-          const cc2 = [...cc];
-          cc2[tile]++;
-          const r = scoreHand(cc2, p.melds, tile, {
-            winType: 'zimo',
-            isFirstRound: false,
-          });
-          if (r.base > best) best = r.base;
-        }
-        p.bestTingScore = best;
+        p.bestTingScore = check[1];
         tings.push(p);
       } else if (p.isHuaZhu) {
         huazhus.push(p);

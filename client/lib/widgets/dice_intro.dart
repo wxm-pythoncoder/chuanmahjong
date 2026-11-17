@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../sound_manager.dart';
 
 class DiceIntro extends StatefulWidget {
   final int d1, d2; // 第一次：换三张方向
@@ -35,6 +36,7 @@ class _DiceIntroState extends State<DiceIntro> {
   @override
   void initState() {
     super.initState();
+    SoundManager.dice();
     _flicker = Timer.periodic(const Duration(milliseconds: 110), (_) {
       if (!mounted) return;
       setState(() {
@@ -48,15 +50,15 @@ class _DiceIntroState extends State<DiceIntro> {
       });
     });
     // 第一次滚 1.2 秒 → 定格并滚第二次 1.2 秒 → 全部定格 1.1 秒后收场
-    Future.delayed(const Duration(milliseconds: 1200), () {
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
       setState(() => _stage = 1);
     });
-    Future.delayed(const Duration(milliseconds: 2400), () {
+    Future.delayed(const Duration(milliseconds: 1600), () {
       if (!mounted) return;
       _flicker?.cancel();
       setState(() => _stage = 2);
-      Future.delayed(const Duration(milliseconds: 1200), () {
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) widget.onDone();
       });
     });
