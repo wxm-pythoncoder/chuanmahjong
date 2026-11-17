@@ -35,5 +35,6 @@ class SoundManager {
   static void win() => play('win');
   static void dice() => play('dice', volume: 0.6);
   static void pass() => play('pass', volume: 0.6);
+  static void ting() => play('ting', volume: 0.7);
   static void qiao() => play('qiao', volume: 0.7);
 }

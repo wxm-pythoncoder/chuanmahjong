@@ -360,8 +360,22 @@ class _GamePageState extends State<GamePage> {
     if (table.state == stateOver) _showResult();
   }
 
-  /// 记录/清除「刚摸的牌」高亮
+  bool _wasTing = false; // 上一巡是否已听牌
+
+  /// 记录/清除「刚摸的牌」高亮 + 上听提示音
   void _updateDrawnTile() {
+    // 上听检测：刚形成听牌时提示音
+    if (table.state == statePlaying &&
+        table.turn == mySeat &&
+        table.voided(mySeat)) {
+      final ting = tingTiles(
+              table.countsOf(mySeat), table.players[mySeat].melds.length, table.players[mySeat].dingque)
+          .isNotEmpty;
+      if (ting && !_wasTing) SoundManager.ting();
+      _wasTing = ting;
+    } else {
+      _wasTing = false;
+    }
     final ld = table.lastDraw;
     if (table.state == statePlaying &&
         table.phase == 'discard' &&
@@ -423,9 +437,9 @@ class _GamePageState extends State<GamePage> {
   }
 
   /// 在对应玩家位置弹飘字
-  void _addFloater(int seat, String text) {
+  void _addFloater(int seat, String text, {int? tile}) {
     final id = ++_floaterSeq;
-    setState(() => _floaters.add({'id': id, 'seat': seat, 'text': text}));
+    setState(() => _floaters.add({'id': id, 'seat': seat, 'text': text, 'tile': tile}));
     Future.delayed(const Duration(milliseconds: 1300), () {
       if (mounted) setState(() => _floaters.removeWhere((f) => f['id'] == id));
     });
@@ -447,7 +461,8 @@ class _GamePageState extends State<GamePage> {
             : e.type == 'bugang'
                 ? '补杠！'
                 : '杠！';
-        _addFloater(e.data['seat'] as int, label);
+        _addFloater(e.data['seat'] as int, label,
+            tile: e.data['tile'] as int);
       }
       if (e.type == 'gang_pay') {
         final gang = table.players[e.data['seat'] as int];
@@ -1217,13 +1232,26 @@ class _GamePageState extends State<GamePage> {
                               color: Colors.black45, blurRadius: 10),
                         ],
                       ),
-                      child: Text(
-                        f['text'] as String,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (f['tile'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: MahjongTileWidget(
+                                  tile: f['tile'] as int,
+                                  width: 40,
+                                  height: 54),
+                            ),
+                          Text(
+                            f['text'] as String,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

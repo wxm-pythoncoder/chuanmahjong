@@ -76,7 +76,15 @@ const sounds = {
           : 0;
     },
   }),
-  // 过自摸：轻柔下滑音
+  // 上听：双音清脆提示
+  ting: synth({
+    duration: 0.25,
+    gen: (t, p) =>
+      (Math.sin(t * 2 * Math.PI * 880) + Math.sin(t * 2 * Math.PI * 1320) * 0.6) *
+          Math.exp(-p * 4) *
+          0.7,
+  }),
+    // 过自摸：轻柔下滑音
   pass: synth({
     duration: 0.2,
     gen: (t, p) => Math.sin(t * 2 * Math.PI * (700 - p * 300)) * Math.exp(-p * 5) * 0.6,
