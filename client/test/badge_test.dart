@@ -50,6 +50,25 @@ void main() {
 
   // ---- 缺门标记 + 记牌器（真实渲染）----
 
+  testWidgets('白屏回归：对局结束弹结算页不崩溃', (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    // 全 bot 牌局（含查叫/花猪/杠钱事件）打到结束
+    final t = Table(['我', '南风', '西风', '北风'], humanSeat0: false);
+    final page = GamePage(injectedTable: t, difficulty: 'hard');
+    await tester.pumpWidget(MaterialApp(home: page));
+    // 推进到对局结束（bot 循环用假时钟大步推进）
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(seconds: 2));
+      if (find.text('返回大厅').evaluate().isNotEmpty) break;
+    }
+    // 结算弹窗应正常渲染（战报内容 + 按钮）
+    expect(find.text('返回大厅'), findsOneWidget);
+    expect(find.textContaining('累计'), findsWidgets);
+    expect(find.text('保存战报图'), findsOneWidget);
+  });
+
   testWidgets('缺门手牌显示「缺」标记（3 张万 → 3 个标记）', (tester) async {
     final t = Table(['我', '南风', '西风', '北风'],
         enableExchange: false,

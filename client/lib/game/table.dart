@@ -518,7 +518,13 @@ class Table {
     };
     p.canSelfDraw = null;
     final payers = activePlayers().where((o) => o.seat != seat).map((o) => o.name).toList();
-    log('zimo', {'seat': seat, 'tile': tile, 'base': result.base, 'payers': payers});
+    log('zimo', {
+      'seat': seat,
+      'tile': tile,
+      'fans': result.fans.map((f) => {'name': f.key, 'fan': f.value}).toList(),
+      'base': result.base,
+      'payers': payers,
+    });
     for (final other in activePlayers()) {
       if (other.seat == seat) continue;
       other.pay -= result.base;

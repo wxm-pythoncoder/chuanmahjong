@@ -1,6 +1,7 @@
 // 川麻血战到底 —— 主入口与牌桌界面（v1：单机模式，纯自绘 UI）
 
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 import 'dart:math';
 
 import 'package:flutter/material.dart' hide Table;
@@ -16,7 +17,18 @@ import 'widgets/dice_intro.dart';
 import 'sound_manager.dart';
 import 'capture/screenshot.dart';
 
+// 全局错误兜底：异常直接显示在屏幕上（不再白屏）
+final ValueNotifier<String?> lastUiError = ValueNotifier<String?>(null);
+
 void main() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    lastUiError.value = 'Build错误: ' + details.exception.toString();
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    lastUiError.value = '运行错误: ' + error.toString();
+    return true;
+  };
   runApp(const ChuanMahjongApp());
 }
 
@@ -32,6 +44,39 @@ class ChuanMahjongApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const HomePage(),
+        builder: (context, child) => Directionality(
+          textDirection: TextDirection.ltr,
+          child: Stack(
+            textDirection: TextDirection.ltr,
+            children: [
+              Positioned.fill(child: child ?? const SizedBox()),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: lastUiError,
+                  builder: (context, err, _) => err == null
+                      ? const SizedBox(height: 0)
+                      : Material(
+                          color: const Color(0xFFB3261E),
+                          child: InkWell(
+                            onTap: () => lastUiError.value = null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Text(err,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 11)),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -677,7 +722,7 @@ class _GamePageState extends State<GamePage> {
                       for (final e in table.events)
                         if (e.type == 'zimo')
                           Text(
-                            '🀄 ${table.players[e.data['seat'] as int].name} 自摸 ${tileName(e.data['tile'] as int)}（${(e.data['fans'] as List).map((f) => (f as Map)['name']).join(' · ')}）${e.data['base']} 分 ← ${(e.data['payers'] as List).join('、')} 各付',
+                            '🀄 ${table.players[e.data['seat'] as int].name} 自摸 ${tileName(e.data['tile'] as int)}（${((e.data['fans'] as List?) ?? const []).map((f) => (f as Map)['name']).join(' · ')}）${e.data['base']} 分 ← ${((e.data['payers'] as List?) ?? const []).join('、')} 各付',
                             style: const TextStyle(fontSize: 12),
                           )
                         else if (e.type == 'dianpao')
