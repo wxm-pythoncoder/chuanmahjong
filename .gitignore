@@ -1,0 +1,22 @@
+# 依赖与构建产物
+node_modules/
+build/
+.dart_tool/
+.flutter-plugins*
+*.lock
+!**/pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Flutter
+ios/Pods/
+android/.gradle/
+android/local.properties
+ios/Flutter/ephemeral/
+
+# 系统
+.DS_Store
+Thumbs.db

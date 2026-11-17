@@ -1,0 +1,47 @@
+# Codemagic 云端构建配置：出 iOS ipa（侧载用，无开发者签名）+ Android APK
+# 在 codemagic.io 导入仓库后选择此 workflow 即可
+
+workflows:
+  ios-sideload:
+    name: 川麻 iOS 侧载包
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: 依赖与测试
+        script: |
+          cd client
+          flutter pub get
+          flutter test
+      - name: 构建 ipa（无签名，用于 Sideloadly/AltStore 侧载）
+        script: |
+          cd client
+          flutter build ipa --release --no-codesign \
+            --export-options-plist=ios/ExportOptions.plist
+    artifacts:
+      - client/build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+
+  android-apk:
+    name: 川麻 Android APK
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      flutter: stable
+    scripts:
+      - name: 依赖与测试
+        script: |
+          cd client
+          flutter pub get
+          flutter test
+      - name: 构建 APK
+        script: |
+          cd client
+          flutter build apk --release
+    artifacts:
+      - client/build/app/outputs/flutter-apk/*.apk
