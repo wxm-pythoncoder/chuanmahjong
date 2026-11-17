@@ -589,8 +589,8 @@ class _GamePageState extends State<GamePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 换三张回顾
-              if (lastExchangeInfo != null)
+              // 换三张回顾：全员各自换出什么牌
+              if (table.exchangePicks.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(8),
@@ -598,24 +598,38 @@ class _GamePageState extends State<GamePage> {
                     color: Colors.indigo.shade50,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('换三张',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      for (final t in (lastExchangeInfo!['gave'] as List))
+                      const Text('换三张回顾（各家换出的牌）',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      for (final p in table.players)
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: MiniTile(tile: t as int),
-                        ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6),
-                        child: Icon(Icons.arrow_forward, size: 16),
-                      ),
-                      for (final t in (lastExchangeInfo!['received'] as List))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: MiniTile(tile: t as int),
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 42,
+                                child: Text('${p.name}:',
+                                    style: const TextStyle(fontSize: 11)),
+                              ),
+                              if ((table.exchangePicks[p.seat] ?? const [])
+                                      .isEmpty)
+                                const Text('未参与',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.black38))
+                              else
+                                for (final t in (table.exchangePicks[p.seat] ??
+                                    const []))
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 2),
+                                    child: MiniTile(tile: t),
+                                  ),
+                            ],
+                          ),
                         ),
                     ],
                   ),
