@@ -309,6 +309,7 @@ class _GamePageState extends State<GamePage> {
   Timer? _dealTimer;
   int? _lastDrawnTile;
   int? _pendingDiscard; // 待出牌（点选标记，确认后打出）
+  int? _fadingTile; // 正在淡出的牌
   final List<Map<String, dynamic>> _floaters = [];
   final GlobalKey _resultKey = GlobalKey(); // 战报截图 // 碰杠飘字
   int _floaterSeq = 0;
@@ -931,7 +932,7 @@ class _GamePageState extends State<GamePage> {
     setState(() => _pendingDiscard = tile);
   }
 
-  /// 确认打出待出牌
+  /// 确认打出待出牌（淡出动画后再真正打出）
   void _confirmPendingDiscard() {
     final tile = _pendingDiscard;
     if (tile == null) return;
@@ -943,11 +944,18 @@ class _GamePageState extends State<GamePage> {
       );
       return;
     }
-    setState(() => _pendingDiscard = null);
-    table.discard(mySeat, tile);
-    SoundManager.discard();
-    _lastDrawnTile = null;
-    unawaited(_advance());
+    setState(() {
+      _pendingDiscard = null;
+      _fadingTile = tile; // 播放淡出动画
+    });
+    Future.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      setState(() => _fadingTile = null);
+      table.discard(mySeat, tile);
+      SoundManager.discard();
+      _lastDrawnTile = null;
+      unawaited(_advance());
+    });
   }
 
   void _confirmExchange() {
@@ -2314,9 +2322,16 @@ class _GamePageState extends State<GamePage> {
                 for (final t in shown)
                   GestureDetector(
                     onTap: () => _tapHandTile(t),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Column(
+                    child: AnimatedPadding(
+                      duration: const Duration(milliseconds: 150),
+                      padding: EdgeInsets.only(
+                          left: 2,
+                          right: 2,
+                          top: t == _pendingDiscard ? 10 : 0),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 260),
+                        opacity: _fadingTile == t ? 0 : 1,
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Stack(
@@ -2425,6 +2440,7 @@ class _GamePageState extends State<GamePage> {
                           ),
                         ],
                       ),
+                        ),
                     ),
                   ),
               ],
