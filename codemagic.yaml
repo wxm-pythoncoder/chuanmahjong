@@ -9,9 +9,6 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-      # 关闭自动代码签名（侧载不需要）
-      ios_signing:
-        distribution_type: none
     scripts:
       - name: 依赖与测试
         script: |
@@ -21,16 +18,18 @@ workflows:
       - name: 构建 ipa（无签名）
         script: |
           cd client
-          # 清理 + 确保依赖完整
           flutter clean
           flutter pub get
-          # iOS CocoaPods 依赖安装
-          cd ios
-          pod install --repo-update || true
-          cd ..
-          # 构建 iOS（无签名）
+          # Xcode 签名相关设置全部禁用
+          find ios -name "*.pbxproj" -exec sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' {} +
+          find ios -name "*.pbxproj" -exec sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = ""/g' {} +
+          find ios -name "*.pbxproj" -exec sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*/DEVELOPMENT_TEAM = ""/g' {} +
+          find ios -name "*.pbxproj" -exec sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = /PROVISIONING_PROFILE_SPECIFIER = ""/g' {} +
+          # iOS CocoaPods（如果存在 Podfile）
+          cd ios && pod install --repo-update; cd ..
+          # 构建 iOS
           flutter build ios --release --no-codesign
-          # 手动打包 ipa（Payload + zip）
+          # 手动打 ipa 包
           mkdir -p build/ios/ipa/Payload
           cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
           cd build/ios/ipa
