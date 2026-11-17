@@ -1126,6 +1126,8 @@ class _GamePageState extends State<GamePage> {
                 ),
               // 动作条
               _actionBar(needDingque, needClaim, myTurn, me),
+              // 常驻听牌条：当前听什么 + 待出牌打出后的听牌预览
+              if (myTurn) _tingBar(me),
               // 我的手牌
               _myHand(me),
               // 记牌器面板
@@ -1227,6 +1229,81 @@ class _GamePageState extends State<GamePage> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// 常驻听牌条：当前听什么 + 待出牌打出后的听牌预览
+  Widget _tingBar(PlayerState me) {
+    if (!table.voided(mySeat)) {
+      return const SizedBox.shrink();
+    }
+    final cc = table.countsOf(mySeat);
+
+    Widget tingLine(String label, List<int> ting) {
+      final chips = <Widget>[];
+      if (ting.isEmpty) {
+        chips.add(const Text('未听',
+            style: TextStyle(color: Colors.redAccent, fontSize: 12)));
+      } else {
+        for (final t in ting) {
+          chips.add(Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF90CAF9).withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFF90CAF9)),
+            ),
+            child: Text(tileName(t),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ));
+        }
+      }
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+              width: 92,
+              child: Text(label,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12))),
+          const SizedBox(width: 6),
+          ...chips,
+        ],
+      );
+    }
+
+    final current = tingTiles(cc, me.melds.length, me.dingque);
+    final pending = _pendingDiscard;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          tingLine('当前听', current),
+          if (pending != null) ...[
+            const SizedBox(height: 4),
+            Builder(builder: (context) {
+              final cc2 = [...cc];
+              cc2[pending]--;
+              final after = tingTiles(cc2, me.melds.length, me.dingque);
+              return tingLine(
+                  '打出${tileName(pending)}后听', after);
+            }),
+          ],
         ],
       ),
     );
@@ -2043,17 +2120,6 @@ class _GamePageState extends State<GamePage> {
                   color: Color(0xFFFFD54F),
                   fontWeight: FontWeight.bold,
                   shadows: [Shadow(color: Colors.black54, offset: Offset(0, 1))])),
-          if (ting.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                '听: ${ting.map((t) => tileName(t)).join(' ')}',
-                style: const TextStyle(
-                    color: Color(0xFF90CAF9),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
-              ),
-            ),
         ],
       ],
     );
