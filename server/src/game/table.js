@@ -449,7 +449,8 @@ export class Table {
     const ctx = { winType, isFirstRound: this.firstRound };
     const result = scoreHand(cc, p.melds, tile, ctx);
     p.hu = { winType, tile, ...result, pays: null };
-    this.log('zimo', { seat, tile, fans: result.fans, base: result.base });
+    const payers = this.activePlayers().filter((o) => o.seat !== seat).map((o) => o.name);
+    this.log('zimo', { seat, tile, fans: result.fans, base: result.base, payers });
     // 自摸：其余未胡家各付 base
     for (const other of this.activePlayers()) {
       if (other.seat === seat) continue;
@@ -598,6 +599,7 @@ export class Table {
             seat: p.seat,
             count: tings.length,
             amount: tings.reduce((a, t) => a + t.bestTingScore, 0),
+            toNames: tings.map((t) => t.name).join('、'),
           });
         }
       }

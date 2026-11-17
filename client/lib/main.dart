@@ -659,8 +659,10 @@ class _GamePageState extends State<GamePage> {
                     ],
                   ),
                 ),
-              // 查叫 / 花猪明细
-              if (table.events.any((e) => e.type == 'chadajiao' || e.type == 'huazhu'))
+              // 结算明细（自摸/点炮/杠钱/查叫/花猪全流水）
+              if (table.events.any((e) =>
+                  ['zimo', 'dianpao', 'gang_pay', 'chadajiao', 'huazhu']
+                      .contains(e.type)))
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(8),
@@ -672,9 +674,24 @@ class _GamePageState extends State<GamePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       for (final e in table.events)
-                        if (e.type == 'chadajiao')
+                        if (e.type == 'zimo')
                           Text(
-                            '🔎 查大叫：${table.players[e.data['seat'] as int].name} 未听 → 赔 ${e.data['amount']} 分',
+                            '🀄 ${table.players[e.data['seat'] as int].name} 自摸 ${tileName(e.data['tile'] as int)}（${(e.data['fans'] as List).map((f) => (f as Map)['name']).join(' · ')}）${e.data['base']} 分 ← ${(e.data['payers'] as List).join('、')} 各付',
+                            style: const TextStyle(fontSize: 12),
+                          )
+                        else if (e.type == 'dianpao')
+                          Text(
+                            '💣 ${table.players[e.data['from'] as int].name} 点炮 ${tileName(e.data['tile'] as int)} → ${table.players[e.data['seat'] as int].name} 胡 ${e.data['base']} 分',
+                            style: const TextStyle(fontSize: 12),
+                          )
+                        else if (e.type == 'gang_pay')
+                          Text(
+                            '💰 ${table.players[e.data['seat'] as int].name} ${e.data['label']}：${e.data['detail']}',
+                            style: const TextStyle(fontSize: 12),
+                          )
+                        else if (e.type == 'chadajiao')
+                          Text(
+                            '🔎 查大叫：${table.players[e.data['seat'] as int].name} 未听 → 赔 ${e.data['toNames'] ?? ''} ${e.data['amount']} 分',
                             style: const TextStyle(fontSize: 12),
                           )
                         else if (e.type == 'huazhu')

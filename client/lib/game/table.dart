@@ -517,7 +517,8 @@ class Table {
       'base': result.base,
     };
     p.canSelfDraw = null;
-    log('zimo', {'seat': seat, 'tile': tile, 'base': result.base});
+    final payers = activePlayers().where((o) => o.seat != seat).map((o) => o.name).toList();
+    log('zimo', {'seat': seat, 'tile': tile, 'base': result.base, 'payers': payers});
     for (final other in activePlayers()) {
       if (other.seat == seat) continue;
       other.pay -= result.base;
@@ -662,6 +663,7 @@ class Table {
             'seat': p.seat,
             'count': tings.length,
             'amount': tings.fold<int>(0, (a, t) => a + t.bestTingScore),
+            'toNames': tings.map((t) => t.name).join('、'),
           });
         }
       }
