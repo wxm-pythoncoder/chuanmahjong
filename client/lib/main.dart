@@ -484,6 +484,7 @@ class _GamePageState extends State<GamePage> {
       if (e.type == 'huazhu' || e.type == 'chadajiao') {
         SoundManager.qiao();
       }
+      if (e.type == 'liuju') SoundManager.liuju();
       if (e.type == 'chadajiao') {
         final p = table.players[e.data['seat'] as int];
         setState(() {
@@ -2092,11 +2093,25 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
-  Widget _dingqueButtons() {    return Row(
+  Widget _dingqueButtons() {
+    // AI 推荐定缺（缺最少的门）
+    final rec = Bot(table).chooseDingque(mySeat);
+    return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text('请定缺：', style: TextStyle(color: Colors.white)),
-        const SizedBox(width: 12),
+        const SizedBox(width: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Text('推荐: 缺${suitNames[rec]}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ),
+        const SizedBox(width: 8),
         for (var s = 0; s < 3; s++)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),

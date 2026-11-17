@@ -66,7 +66,12 @@ const sounds = {
       return Math.sin(t * 2 * Math.PI * freq) * Math.exp(-((p * 3) % 1) * 3) * 0.8;
     },
   }),
-  // 骰子：五连快点击
+  // 流局：下行低落音
+  liuju: synth({
+    duration: 0.45,
+    gen: (t, p) => Math.sin(t * 2 * Math.PI * (600 - p * 350)) * Math.exp(-p * 3) * 0.7,
+  }),
+    // 骰子：五连快点击
   dice: synth({
     duration: 0.5,
     gen: (t, p) => {

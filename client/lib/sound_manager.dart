@@ -37,4 +37,5 @@ class SoundManager {
   static void pass() => play('pass', volume: 0.6);
   static void ting() => play('ting', volume: 0.7);
   static void qiao() => play('qiao', volume: 0.7);
+  static void liuju() => play('liuju', volume: 0.7);
 }
