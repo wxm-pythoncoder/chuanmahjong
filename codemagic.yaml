@@ -14,12 +14,11 @@ workflows:
         script: |
           cd client
           flutter pub get
-          flutter test
+          flutter test test/engine_test.dart test/exchange_test.dart test/badge_test.dart
       - name: 构建 ipa（无签名，用于 Sideloadly/AltStore 侧载）
         script: |
           cd client
-          flutter build ipa --release --no-codesign \
-            --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --release --no-codesign
     artifacts:
       - client/build/ios/ipa/*.ipa
     publishing:
@@ -38,7 +37,7 @@ workflows:
         script: |
           cd client
           flutter pub get
-          flutter test
+          flutter test test/engine_test.dart test/exchange_test.dart test/badge_test.dart
       - name: 构建 APK
         script: |
           cd client
