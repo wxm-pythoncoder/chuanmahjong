@@ -437,6 +437,7 @@ class _GamePageState extends State<GamePage> {
     final evts = table.events;
     for (; _lastEventIdx < evts.length; _lastEventIdx++) {
       final e = evts[_lastEventIdx];
+      if (e.type == 'discard') SoundManager.discard();
       // 碰/杠飘字特效
       if (e.type == 'peng' || e.type == 'minggang' || e.type == 'angang' || e.type == 'bugang') {
         SoundManager.gang();

@@ -334,6 +334,28 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
                     startSide: sideLabels[v.wallStartSide],
                     onDone: () => setState(() => diceIntro = false),
                   ),
+                // 断线重连覆盖层
+                if (reconnecting)
+                  Container(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        CircularProgressIndicator(color: Color(0xFFFFD54F)),
+                        SizedBox(height: 16),
+                        Text('连接断开 · 自动重连中…',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        SizedBox(height: 8),
+                        Text('已重连将自动恢复手牌与进度',
+                            style:
+                                TextStyle(color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
+                  ),
               ],
             ),
     );
