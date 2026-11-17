@@ -9,27 +9,34 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+      # 关闭自动代码签名（侧载不需要）
+      ios_signing:
+        distribution_type: none
     scripts:
       - name: 依赖与测试
         script: |
           cd client
           flutter pub get
           flutter test test/engine_test.dart test/exchange_test.dart test/badge_test.dart
-      - name: 构建 ipa（无签名，用于 Sideloadly/AltStore 侧载）
+      - name: 构建 ipa（无签名）
         script: |
           cd client
+          # 清理 + 确保依赖完整
+          flutter clean
+          flutter pub get
+          # iOS CocoaPods 依赖安装
+          cd ios
+          pod install --repo-update || true
+          cd ..
+          # 构建 iOS（无签名）
           flutter build ios --release --no-codesign
-          # 手动打包成 ipa（Payload 目录 + zip）
+          # 手动打包 ipa（Payload + zip）
           mkdir -p build/ios/ipa/Payload
           cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
           cd build/ios/ipa
           zip -r ../chuanmahjong-unsigned.ipa Payload
     artifacts:
       - client/build/ios/ipa/*.ipa
-    publishing:
-      email:
-        recipients:
-          - your-email@example.com
 
   android-apk:
     name: 川麻 Android APK
