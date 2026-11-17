@@ -698,6 +698,29 @@ class _GamePageState extends State<GamePage> {
                           style: TextStyle(
                               fontSize: 12, color: Colors.orange.shade800),
                         ),
+                      // 流局查叫：听牌者显示听什么牌、最大自摸分
+                      if (p.hu == null && p.isTing)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              const Text('听: ',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
+                              for (final t in p.tingDetail)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 2),
+                                  child: MiniTile(tile: t),
+                                ),
+                              Text(' · 最大 ${p.bestTingScore} 分（自摸）',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade800)),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       // 摊牌：手牌
                       Wrap(

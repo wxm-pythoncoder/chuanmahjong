@@ -34,6 +34,7 @@ class PlayerState {
   int bestTingScore = 0; // 查大叫：最大听牌型自摸分
   bool isHuaZhu = false; // 花猪：未听且三门俱全
   final Set<int> passedHuTiles = {}; // 过手：过胡/过自摸的同种牌，出牌前不能胡
+  List<int> tingDetail = []; // 流局查叫：听的牌（空=已构成胡形）
 
   // 回合内可用动作提示
   Map<String, dynamic>? canSelfDraw; // {tile, winType}
@@ -584,6 +585,7 @@ class Table {
         final ting = tingTiles(cc, p.melds.length, p.dingque);
         cc[d]++;
         if (ting.isNotEmpty) {
+          final waits = <int>{};
           // 最大自摸分：枚举 弃 d 进 p 的组合
           var best = 0;
           for (var t = 0; t < 27; t++) {
@@ -598,10 +600,11 @@ class Table {
             cc[t]--;
             cc[d]++;
           }
-          return [true, best];
+          // 明细：胡牌形（听牌张即手中牌）
+          return [true, best, <int>[]];
         }
       }
-      return [false, 0];
+      return [false, 0, <int>[]];
     }
     // 13 张：标准听牌
     final ting = tingTiles(cc, p.melds.length, p.dingque);
@@ -614,7 +617,7 @@ class Table {
           {'winType': 'zimo', 'isFirstRound': false});
       if (r.base > best) best = r.base;
     }
-    return [true, best];
+    return [true, best, ting];
   }
 
   void settleDraw() {
@@ -631,6 +634,7 @@ class Table {
       p.isTing = !p.isHuaZhu && (check[0] as bool);
       if (p.isTing) {
         p.bestTingScore = check[1] as int;
+        p.tingDetail = List<int>.from(check[2] as List);
         tings.add(p);
       } else if (p.isHuaZhu) {
         huazhus.add(p);
